@@ -75,7 +75,7 @@ Built an AI-powered GitHub bot that automatically reviews Pull Requests using Gr
 **Tech:** Node.js, Express.js, Groq AI, GitHub API, Webhooks, Render
 
 ## 👨‍💻 Author
-new changes
+new changess 
 Shainti
 
 GitHub: github.com/shainti
