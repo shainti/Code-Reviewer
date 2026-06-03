@@ -19,3 +19,4 @@ Automatically reviews GitHub Pull Requests using Groq LLaMA AI.
 2. Run `npm install`
 3. Add `.env` file with your tokens
 4. Run `node index.js`
+ another setup
