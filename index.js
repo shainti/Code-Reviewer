@@ -1,70 +1,71 @@
 const express = require("express");
 const axios = require("axios");
-const {app} = require('./server')
-app.use(express.json());
 const Groq = require("groq-sdk");
 require('dotenv').config();
 
+const app = express();
+app.use(express.json());
 
-const groq = new Groq({
-  apiKey: process.env.groq,
-});
-const GITHUB_TOKEN =
-  process.env.githubtoken;
+const groq = new Groq({ apiKey: process.env.groq });
+const GITHUB_TOKEN = process.env.githubtoken;
 
-
-  
-  app.get('/', (req, res) => {
+app.get('/', (req, res) => {
   res.send('AI Code Review Bot is alive! 🤖')
 })
 
 app.post("/webhook", async (req, res) => {
-  const pr = req.body.pull_request;
-  const action = req.body.action;
+  try {
+    const pr = req.body.pull_request;
+    const action = req.body.action;
 
-  if (action !== "opened") return res.send("ok");
+    if (action !== "opened") return res.send("ok");
 
-  // Step 1 - diff fetch karo
-  const response = await axios.get(pr.diff_url, {
-    headers: { Authorization: `token ${GITHUB_TOKEN}` },
-  });
-  const diff = response.data;
+    // Step 1 - diff fetch karo
+    const response = await axios.get(pr.diff_url, {
+      headers: { Authorization: `token ${GITHUB_TOKEN}` },
+    });
+    const diff = response.data;
 
-  // Step 2 - OpenAI se review 
-  const aiResponse = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    messages: [
+    // Step 2 - AI review lo
+    const aiResponse = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: "You are a code reviewer. Review the given code diff and suggest improvements, bugs, and best practices.",
+        },
+        {
+          role: "user",
+          content: `Review this code diff:\n\n${diff}`,
+        },
+      ],
+    });
+
+    const review = aiResponse.choices[0].message.content;
+    console.log("AI Review:", review);
+
+    // Step 3 - GitHub pe comment karo
+    const repoFullName = req.body.repository.full_name;
+    const prNumber = req.body.pull_request.number;
+
+    await axios.post(
+      `https://api.github.com/repos/${repoFullName}/issues/${prNumber}/comments`,
+      { body: review },
       {
-        role: "system",
-        content:
-          "You are a code reviewer. Review the given code diff and suggest improvements, bugs, and best practices.",
-      },
-      {
-        role: "user",
-        content: `Review this code diff:\n\n${diff}`,
-      },
-    ],
-  });
+        headers: {
+          Authorization: `token ${GITHUB_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-  const review = aiResponse.choices[0].message.content;
-  console.log("AI Review:", review);
-  res.send("ok");
+    console.log("Comment posted on GitHub!");
+    res.send("ok"); // ← sabse last mein
 
-
-  const repoFullName = req.body.repository.full_name;
-  const prNumber = req.body.pull_request.number;
-
-  await axios.post(
-    `https://api.github.com/repos/${repoFullName}/issues/${prNumber}/comments`,
-    { body: review },
-    {
-      headers: {
-        Authorization: `token ${GITHUB_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-    },
-  );
-
-  console.log("Comment posted on GitHub!");
+  } catch (err) {
+    console.error("Error:", err.message);
+    res.status(500).send("error");
+  }
 });
 
+app.listen(3000, () => console.log('Server chalu hai'));
