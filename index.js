@@ -9,10 +9,14 @@ require('dotenv').config();
 const groq = new Groq({
   apiKey: process.env.groq,
 });
-
 const GITHUB_TOKEN =
   process.env.githubtoken;
 
+
+  
+  app.get('/', (req, res) => {
+  res.send('AI Code Review Bot is alive! 🤖')
+})
 
 app.post("/webhook", async (req, res) => {
   const pr = req.body.pull_request;
